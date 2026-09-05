@@ -1,0 +1,79 @@
+services:
+  nemoguardrails:
+    image: renatogroffe/nvidia-nemo-guardrails:0.24.0-build_5
+    container_name: nemoguardrails
+    ports:
+      - "8000:8000"
+    environment:
+      NEMO_GUARDRAILS_HEALTHCHECK_URL: http://localhost:8000/v1/health
+      NEMO_GUARDRAILS_NO_USAGE_STATS: "1"
+      DO_NOT_TRACK: "1"
+      # true => desativa a UI de chat (/chat); false => mantém a UI habilitada.
+      NEMO_GUARDRAILS_DISABLE_CHAT_UI: ${NEMO_GUARDRAILS_DISABLE_CHAT_UI:-false}
+      DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-local}
+      OTEL_SERVICE_NAME: nemo-guardrails
+      OTEL_SERVICE_NAMESPACE: guardrails
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_TRACES_SAMPLER: parentbased_traceidratio
+      OTEL_TRACES_SAMPLER_ARG: ${OTEL_TRACES_SAMPLER_ARG:-1}
+      AZURE_OPENAI_API_KEY: <KEY>
+      AZURE_OPENAI_ENDPOINT: https://<RESOURCE_NAME>.openai.azure.com
+      AZURE_OPENAI_DEPLOYMENT: <DEPLOYMENT_NAME>
+      AZURE_OPENAI_API_VERSION: "2024-10-21"
+    volumes:
+      - ./config:/config:ro
+      - ./scripts/render_config.py:/opt/render_config.py:ro
+      - ./scripts/otel_setup.py:/opt/otel_setup.py:ro
+      - ./scripts/start_server.py:/opt/start_server.py:ro
+    depends_on:
+      otel-collector:
+        condition: service_started
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        python /opt/render_config.py /config /tmp/guardrails-config &&
+        exec python /opt/start_server.py --verbose --config=/tmp/guardrails-config --port 8000
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.build_opener(urllib.request.ProxyHandler({})).open('http://localhost:8000/v1/health').status==200 else 1)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - guardrails
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.116.1
+    container_name: otel-collector
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./otel/collector.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - guardrails
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    container_name: jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+    restart: unless-stopped
+    networks:
+      - guardrails
+
+networks:
+  guardrails:
+    driver: bridge
