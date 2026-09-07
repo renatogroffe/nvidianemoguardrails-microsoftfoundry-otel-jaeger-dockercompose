@@ -10,3 +10,11 @@ Para os testes aqui descritos foram configurados guardrails a fim de evitar men�
 Envio de uma requisição de uma requisição inválida via REST Client no Visual Studio Code:
 
 ![Requisição inválida no VS Code](img/01-req-invalida.png)
+
+Envio de uma requisição válida utilizando novamente REST Client + VS Code:
+
+![Requisição válida no VS Code](img/02-req-valida.png)
+
+Testes via chat disponibilizado pelo Nemo Guardrails:
+
+![Testes com o chat do Nemo Guardrails](img/03-chat.png)
