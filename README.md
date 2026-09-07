@@ -18,3 +18,11 @@ Envio de uma requisição válida utilizando novamente REST Client + VS Code:
 Testes via chat disponibilizado pelo Nemo Guardrails:
 
 ![Testes com o chat do Nemo Guardrails](img/03-chat.png)
+
+Traces exportados para o Jaeger:
+
+![Traces no Jaeger](img/04-traces-gerados.png)
+
+Um trace em detalhes na interface na interface do Jaeger:
+
+![Detalhes de um trace no Jaeger](img/05-exemplo-trace.png)
